@@ -1,6 +1,6 @@
-# nanobot Skills
+# aegis Skills
 
-This directory contains built-in skills that extend nanobot's capabilities.
+This directory contains built-in skills that extend aegis's capabilities.
 
 ## Skill Format
 
