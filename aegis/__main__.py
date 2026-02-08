@@ -1,5 +1,5 @@
 """
-Entry point for running nanobot as a module: python -m nanobot
+Entry point for running AEGIS as a module: python -m aegis
 """
 
 from aegis.cli.commands import app

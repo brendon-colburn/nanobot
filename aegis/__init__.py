@@ -1,6 +1,6 @@
 """
-nanobot - A lightweight AI agent framework
+AEGIS - Autonomous Evolving General Intelligence System
 """
 
 __version__ = "0.1.0"
-__logo__ = "🐈"
+__logo__ = "🛡️"
