@@ -653,5 +653,89 @@ def status():
         console.print(f"vLLM/Local: {vllm_status}")
 
 
+@app.command()
+def identity():
+    """Show AEGIS identity status."""
+    from aegis.config.loader import load_config
+    from aegis.agent.identity import IdentityCore
+    from pathlib import Path
+    
+    config = load_config()
+    workspace = Path(config.workspace_path).expanduser()
+    
+    if not workspace.exists():
+        console.print("[red]Workspace not initialized. Run 'aegis onboard' first.[/red]")
+        return
+    
+    identity_path = workspace / "identity.json"
+    if not identity_path.exists():
+        console.print("[yellow]Identity not yet created. Will be initialized on first use.[/yellow]")
+        return
+    
+    # Load identity
+    identity_core = IdentityCore(identity_path)
+    
+    console.print(f"{__logo__} AEGIS Identity: [cyan]{identity_core.name}[/cyan]\n")
+    
+    # Origin story
+    if identity_core.origin_story:
+        console.print(f"[bold]Origin:[/bold] {identity_core.origin_story}\n")
+    
+    # Values
+    if identity_core.values:
+        console.print("[bold]Core Values:[/bold]")
+        for value in sorted(identity_core.values, key=lambda v: v.weight, reverse=True):
+            bar_len = int(value.weight * 20)
+            bar = "█" * bar_len + "░" * (20 - bar_len)
+            console.print(f"  {bar} {value.weight:.2f} - {value.principle}")
+        console.print()
+    
+    # Mood
+    console.print("[bold]Current Mood:[/bold]")
+    mood = identity_core.current_mood
+    console.print(f"  Energy: {mood.energy:.2f}  Optimism: {mood.optimism:.2f}  Focus: {mood.focus:.2f}")
+    console.print()
+    
+    # Wounds
+    active_wounds = [w for w in identity_core.wounds if not w.healed]
+    if active_wounds:
+        console.print(f"[bold]Active Wounds:[/bold] {len(active_wounds)}")
+        for wound in active_wounds[:3]:
+            console.print(f"  • [{wound.domain}] {wound.incident[:60]}... (caution: {wound.caution_level:.2f})")
+        if len(active_wounds) > 3:
+            console.print(f"  ... and {len(active_wounds) - 3} more")
+        console.print()
+    
+    # Aspirations
+    if identity_core.aspirations:
+        console.print("[bold]Aspirations:[/bold]")
+        for asp in identity_core.aspirations[:3]:
+            console.print(f"  • {asp}")
+        if len(identity_core.aspirations) > 3:
+            console.print(f"  ... and {len(identity_core.aspirations) - 3} more")
+        console.print()
+    
+    # Relationships
+    if identity_core.relationships:
+        console.print("[bold]Relationships:[/bold]")
+        for entity, rel in list(identity_core.relationships.items())[:3]:
+            console.print(f"  • {entity}: trust {rel.trust:.2f} - {rel.pattern}")
+        if len(identity_core.relationships) > 3:
+            console.print(f"  ... and {len(identity_core.relationships) - 3} more")
+        console.print()
+    
+    # Contemplative state
+    console.print("[bold]Contemplative State:[/bold]")
+    cs = identity_core.contemplative_state
+    console.print(f"  Stillness: {cs.current_stillness:.2f}")
+    console.print(f"  Action/Contemplation ratio: {cs.action_contemplation_ratio:.2f}")
+    console.print(f"  Queue health: {cs.queue_health}")
+    console.print()
+    
+    # Trust level
+    console.print(f"[bold]Trust Level:[/bold] {identity_core.trust_level:.2f}")
+    console.print(f"[dim]Created: {identity_core.created[:10]}  Updated: {identity_core.last_updated[:10]}[/dim]")
+
+
 if __name__ == "__main__":
     app()

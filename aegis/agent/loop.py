@@ -20,6 +20,9 @@ from aegis.agent.tools.spawn import SpawnTool
 from aegis.agent.tools.cron import CronTool
 from aegis.agent.subagent import SubagentManager
 from aegis.session.manager import SessionManager
+from aegis.agent.identity import IdentityCore
+from aegis.agent.experience import ExperienceEngine
+from aegis.agent.contemplation import ContemplativeSystem
 
 
 class AgentLoop:
@@ -58,7 +61,19 @@ class AgentLoop:
         self.cron_service = cron_service
         self.restrict_to_workspace = restrict_to_workspace
         
-        self.context = ContextBuilder(workspace)
+        # AEGIS components - Initialize before context builder
+        identity_path = workspace / "identity.json"
+        self.identity = IdentityCore(identity_path)
+        self.experience = ExperienceEngine(
+            self.identity, 
+            workspace / "experiences"
+        )
+        self.contemplation = ContemplativeSystem(
+            self.identity,
+            workspace / "contemplation_queue.json"
+        )
+        
+        self.context = ContextBuilder(workspace, identity=self.identity)
         self.sessions = SessionManager(workspace)
         self.tools = ToolRegistry()
         self.subagents = SubagentManager(
@@ -223,6 +238,9 @@ class AgentLoop:
                     messages = self.context.add_tool_result(
                         messages, tool_call.id, tool_call.name, result
                     )
+                    
+                    # Track experience for AEGIS
+                    self._track_tool_experience(tool_call.name, tool_call.arguments, result)
             else:
                 # No tool calls, we're done
                 final_content = response.content
@@ -372,3 +390,37 @@ class AgentLoop:
         
         response = await self._process_message(msg)
         return response.content if response else ""
+    
+    def _track_tool_experience(self, tool_name: str, arguments: dict[str, Any], result: str) -> None:
+        """
+        Track tool execution as an experience for the Experience Engine.
+        
+        This allows the agent to learn from outcomes and update its identity.
+        """
+        # Determine domain based on tool
+        domain_map = {
+            "exec": "shell_execution",
+            "write_file": "file_operations",
+            "edit_file": "file_operations",
+            "web_search": "research",
+            "web_fetch": "research",
+            "message": "communication",
+            "cron": "scheduling"
+        }
+        domain = domain_map.get(tool_name, "general")
+        
+        # Create action description
+        action = f"{tool_name} with args: {str(arguments)[:100]}"
+        
+        # Simple heuristic for intended goal
+        intended_goal = f"Execute {tool_name} successfully"
+        
+        # Process through experience engine
+        self.experience.process(
+            action=action,
+            context={"tool": tool_name, "arguments": arguments},
+            tools_used=[tool_name],
+            outcome=result[:500],  # Truncate long results
+            intended_goal=intended_goal,
+            domain=domain
+        )

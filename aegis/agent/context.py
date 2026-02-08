@@ -20,10 +20,11 @@ class ContextBuilder:
     
     BOOTSTRAP_FILES = ["AGENTS.md", "SOUL.md", "USER.md", "TOOLS.md", "IDENTITY.md"]
     
-    def __init__(self, workspace: Path):
+    def __init__(self, workspace: Path, identity: "IdentityCore" = None):
         self.workspace = workspace
         self.memory = MemoryStore(workspace)
         self.skills = SkillsLoader(workspace)
+        self.identity = identity  # Optional Identity Core for AEGIS mode
     
     def build_system_prompt(self, skill_names: list[str] | None = None) -> str:
         """
@@ -36,6 +37,11 @@ class ContextBuilder:
             Complete system prompt.
         """
         parts = []
+        
+        # AEGIS Identity Core awakening context (if available)
+        if self.identity:
+            parts.append(self.identity.get_awakening_context())
+            parts.append("")  # Blank line
         
         # Core identity
         parts.append(self._get_identity())
